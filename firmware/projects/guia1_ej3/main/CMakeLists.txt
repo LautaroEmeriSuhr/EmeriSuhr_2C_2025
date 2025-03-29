@@ -1,2 +1,2 @@
-idf_component_register(SRCS "1_blinking_switch.c"
+idf_component_register(SRCS "guia1_ej3.c"
                     INCLUDE_DIRS "")
