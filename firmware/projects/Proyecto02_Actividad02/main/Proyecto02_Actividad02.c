@@ -1,4 +1,4 @@
-/*! @mainpage Actividad 1 Proyecto 2
+/*! @mainpage Template
  *
  * @section genDesc General Description
  *
@@ -29,18 +29,18 @@
  * | 	SEL3	 	| 	GPIO_9		|
  * | 	Gnd 	    | 	GND     	|
  *
- *
  * @section changelog Changelog
  *
  * |   Date	    | Description                                    |
  * |:----------:|:-----------------------------------------------|
- * | 11/04/2025 | Document creation		                         |
+ * | 25/04/2025 | Document creation		                         |
  *
  * @author Lautaro Emeri Suhr (lautaro.emeri@ingenieria.uner.edu.ar)
  *
  */
 
 /*==================[inclusions]=============================================*/
+
 #include <stdio.h>
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
@@ -49,9 +49,12 @@
 #include <led.h>
 #include <lcditse0803.h>
 #include <switch.h>
+#include <timer_mcu.h>
+
 /*==================[macros and definitions]=================================*/
 
 #define Delay_time 1000	/* Tiempo de espera en milisegundos */
+#define CONFIG_BLINK_PERIOD_LED_1_US 1000000
 
 /*==================[internal data definition]===============================*/
 
@@ -64,7 +67,7 @@ uint8_t teclas;
 TaskHandle_t medir_distancia_handle = NULL;	/* Handle para la tarea de medir distancia */
 TaskHandle_t leer_teclas_handle = NULL;	/* Handle para la tarea de leer teclas */
 
-/*==================[internal functions declaration]=========================*/
+/*==================[external functions definition]==========================*/
 
 static void medir_distancia(void *pvParameter)
 {
@@ -110,26 +113,19 @@ static void medir_distancia(void *pvParameter)
 }
 }
 
-
-static void leer_teclas(void *pvParameter)
-{
-	while(true)
-	{
-		teclas = SwitchesRead();	/* Lee el estado de los switches */
-		switch(teclas){
-    		case SWITCH_1:
-    			on_off = !on_off;	/* Cambia el estado de on_off */
-    		break;
-    		case SWITCH_2:
-    			hold = !hold;	/* Cambia el estado de hold */
-    		break;
-    	}
-		vTaskDelay(Delay_time / portTICK_PERIOD_MS);	/* Espera 1 segundo */
-	}
+void On_Off(void* param){
+	on_off = !on_off;	/* Cambia el estado de on_off */
 }
 
+void Hold(void *param)
+{
+	hold = !hold;	/* Cambia el estado de hold */
+}
 
-/*==================[external functions definition]==========================*/
+void FuncTimerA(void* param){
+	/* Función invocada en la interrupción del timer A */
+	vTaskNotifyGiveFromISR(medir_distancia_handle, pdFALSE);    /* Envía una notificación a la tarea asociada al LED_1 */
+}
 void app_main(void){
 
 	HcSr04Init(GPIO_3, GPIO_2);	/* Inicializa el HC-SR04 */
@@ -137,9 +133,20 @@ void app_main(void){
 	LedsInit();	/* Inicializa los LEDs */
 	SwitchesInit();	/* Inicializa los switches */
 
-	xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 1, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
-	xTaskCreate(leer_teclas, "leer_teclas", 2048, NULL, 1, &leer_teclas_handle);	/* Crea la tarea de leer teclas */
+	timer_config_t timer_led_1 = {
+        .timer = TIMER_A,
+        .period = CONFIG_BLINK_PERIOD_LED_1_US,
+        .func_p = FuncTimerA,
+        .param_p = NULL
+    };
 
-	
+	TimerInit(&timer_led_1);	/* Inicializa el timer del LED_1 */
+
+	SwitchActivInt(SWITCH_1, On_Off, NULL);	/* Activa la interrupción del switch 1 */
+	SwitchActivInt(SWITCH_2, Hold, NULL);	/* Activa la interrupción del switch 2 */
+
+	xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 1, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
+
+	TimerStart(timer_led_1.timer);	/* Inicia el timer del LED_1 */
 }
 /*==================[end of file]============================================*/
