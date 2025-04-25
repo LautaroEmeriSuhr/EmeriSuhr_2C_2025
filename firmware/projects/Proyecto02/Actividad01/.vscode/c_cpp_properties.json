@@ -7,16 +7,16 @@
                 "${config:idf.espIdfPath}/components/**",
                 "${config:idf.espIdfPathWin}/components/**",
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/../../drivers/microcontroller/**",
-                "${workspaceFolder}/../../drivers/devices/**"
+                "${workspaceFolder}/../../../drivers/microcontroller/**",
+                "${workspaceFolder}/../../../drivers/devices/**"
             ],
             "browse": {
                 "path": [
                     "${config:idf.espIdfPath}/components",
                     "${config:idf.espIdfPathWin}/components",
                     "${workspaceFolder}/**",
-                    "${workspaceFolder}/../../drivers/microcontroller/**",
-                    "${workspaceFolder}/../../drivers/devices/**"
+                    "${workspaceFolder}/../../../drivers/microcontroller/**",
+                    "${workspaceFolder}/../../../drivers/devices/**"
                 ],
                 "limitSymbolsToIncludedHeaders": false
             },
