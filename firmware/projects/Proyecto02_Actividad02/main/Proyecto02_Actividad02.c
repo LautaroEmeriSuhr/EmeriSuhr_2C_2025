@@ -72,6 +72,7 @@ TaskHandle_t leer_teclas_handle = NULL;	/* Handle para la tarea de leer teclas *
 static void medir_distancia(void *pvParameter)
 {
 	while(true){
+	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);	/* Espera a que se envíe una notificación */
 	if(on_off)
 	{
 		distancia = HcSr04ReadDistanceInCentimeters();	/* Lee la distancia en cm */
@@ -109,7 +110,6 @@ static void medir_distancia(void *pvParameter)
 			LedsOffAll();	/* Apaga todos los LEDs */
 		}
 	}
-	vTaskDelay(Delay_time / portTICK_PERIOD_MS);	/* Espera 1 segundo */
 }
 }
 
@@ -145,7 +145,7 @@ void app_main(void){
 	SwitchActivInt(SWITCH_1, On_Off, NULL);	/* Activa la interrupción del switch 1 */
 	SwitchActivInt(SWITCH_2, Hold, NULL);	/* Activa la interrupción del switch 2 */
 
-	xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 1, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
+	xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 5, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
 
 	TimerStart(timer_led_1.timer);	/* Inicia el timer del LED_1 */
 }
