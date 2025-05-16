@@ -59,8 +59,8 @@
 
 /*==================[internal data definition]===============================*/
 
-bool on_off = false;	/* Variable para el estado del LED */
-bool hold = true;	/* Variable para el estado de hold */
+bool on_off = true;	/* Variable para el estado del LED */
+bool hold = false;	/* Variable para el estado de hold */
 
 uint16_t distancia = 0;
 uint8_t teclas;
@@ -74,11 +74,6 @@ static void medir_distancia(void *pvParameter)
 {
 	while(true){
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);	/* Espera a que se envíe una notificación */
-
-	UartSendString(UART_PC, (char*) UartItoa(distancia,10));	/* Envía la distancia por UART */
-	UartSendString(UART_PC, " ");	/* Envía un espacio */
-	UartSendString(UART_PC, "cm");	/* Envía la unidad en la que estoy midiendo*/
-	UartSendString(UART_PC, "\r\n");	/* Envía un salto de línea */
 
 	if(on_off)
 	{
@@ -117,6 +112,11 @@ static void medir_distancia(void *pvParameter)
 			LedsOffAll();	/* Apaga todos los LEDs */
 		}
 	}
+	
+	UartSendString(UART_PC, (char*) UartItoa(distancia,10));	/* Envía la distancia por UART */
+	UartSendString(UART_PC, " ");	/* Envía un espacio */
+	UartSendString(UART_PC, "cm");	/* Envía la unidad en la que estoy midiendo*/
+	UartSendString(UART_PC, "\r\n");	/* Envía un salto de línea */
 }
 }
 
@@ -141,12 +141,13 @@ void FuncUART(void *param)
 	UartReadByte(UART_PC, &letra);	/* Lee un byte del UART */
 	if(letra == 'O')
 	{
-		On_Off();	/* Cambia el estado de on_off */
+		Hold();	/* Cambia el estado de hold */
 	}
 	if(letra == 'H')
 	{
-		Hold();	/* Cambia el estado de hold */
+		On_Off();	/* Cambia el estado de on_off */
 	}
+
 }
 void app_main(void){
 
