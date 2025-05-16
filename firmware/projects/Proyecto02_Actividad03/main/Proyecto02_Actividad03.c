@@ -177,7 +177,7 @@ void app_main(void){
 	SwitchActivInt(SWITCH_1, On_Off, NULL);	/* Activa la interrupción del switch 1 */
 	SwitchActivInt(SWITCH_2, Hold, NULL);	/* Activa la interrupción del switch 2 */
 
-	xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 5, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
+	//xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 5, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
 
 	TimerStart(timer_led_1.timer);	/* Inicia el timer del LED_1 */
 } 
