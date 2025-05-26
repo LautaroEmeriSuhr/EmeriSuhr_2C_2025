@@ -2,7 +2,14 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * Cree un nuevo proyecto en el que modifique la actividad del punto 2 agregando ahora
+ * el puerto serie. Envíe los datos de las mediciones para poder observarlos en un terminal 
+ * en la PC, siguiendo el siguiente formato:
+ * 
+ * 3 dígitos ascii + 1 carácter espacio + dos caracteres para la unidad (cm) + cambio de línea 
+ * “ \r\n”
+ * Además debe ser posible controlar la EDU-ESP de la siguiente manera:
+ * Con las teclas “O” y “H”, replicar la funcionalidad de las teclas 1 y 2 de la EDU-ESP
  *
  * <a href="https://drive.google.com/...">Operation Example</a>
  *
