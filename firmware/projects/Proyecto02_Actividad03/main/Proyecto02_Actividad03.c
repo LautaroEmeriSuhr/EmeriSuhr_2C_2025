@@ -55,22 +55,22 @@
 /*==================[macros and definitions]=================================*/
 
 #define Delay_time 1000	/* Tiempo de espera en milisegundos */
-#define CONFIG_BLINK_PERIOD_LED_1_US 1000000
+#define CONFIG_BLINK_PERIOD_LED_1_US 1000000 /* Periodo del timer del LED_1 en microsegundos */
 
 /*==================[internal data definition]===============================*/
 
 bool on_off = true;	/* Variable para el estado del LED */
 bool hold = false;	/* Variable para el estado de hold */
 
-uint16_t distancia = 0;
-uint8_t teclas;
+uint16_t distancia = 0; /* Variable para almacenar la distancia medida */
+uint8_t teclas; 	/* Variable para almacenar el estado de los switches */
 
 TaskHandle_t medir_distancia_handle = NULL;	/* Handle para la tarea de medir distancia */
 TaskHandle_t leer_teclas_handle = NULL;	/* Handle para la tarea de leer teclas */
 
 /*==================[external functions definition]==========================*/
 
-static void medir_distancia(void *pvParameter)
+static void medir_distancia(void *pvParameter) 	/* Tarea que mide la distancia */
 {
 	while(true){
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);	/* Espera a que se envíe una notificación */
@@ -120,22 +120,22 @@ static void medir_distancia(void *pvParameter)
 }
 }
 
-void On_Off()
+void On_Off() 	/* Función que cambia el estado de on_off */
 {
 	on_off = !on_off;	/* Cambia el estado de on_off */
 }
 
-void Hold()
+void Hold() 	/* Función que cambia el estado de hold */
 {
 	hold = !hold;	/* Cambia el estado de hold */
 }
 
-void FuncTimerA(void* param){
-	/* Función invocada en la interrupción del timer A */
+void FuncTimerA(void* param) /* Función invocada en la interrupción del timer A */
+{
 	vTaskNotifyGiveFromISR(medir_distancia_handle, pdFALSE);    /* Envía una notificación a la tarea asociada al LED_1 */
 }
 
-void FuncUART(void *param)
+void FuncUART(void *param) /* Función que se ejecuta cuando se recibe un byte por UART */
 {
 	uint8_t letra = 0;	/* Variable para almacenar la letra leída */
 	UartReadByte(UART_PC, &letra);	/* Lee un byte del UART */
@@ -176,8 +176,6 @@ void app_main(void){
 
 	SwitchActivInt(SWITCH_1, On_Off, NULL);	/* Activa la interrupción del switch 1 */
 	SwitchActivInt(SWITCH_2, Hold, NULL);	/* Activa la interrupción del switch 2 */
-
-	//xTaskCreate(medir_distancia, "medir_distancia", 2048, NULL, 5, &medir_distancia_handle);	/* Crea la tarea de medir distancia */
 
 	TimerStart(timer_led_1.timer);	/* Inicia el timer del LED_1 */
 } 

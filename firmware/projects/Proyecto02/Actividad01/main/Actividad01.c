@@ -2,7 +2,7 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * El .
  *
  * <a href="https://drive.google.com/...">Operation Example</a>
  *
@@ -58,15 +58,16 @@
 bool on_off = true;	/* Variable para el estado del LED */
 bool hold = false;	/* Variable para el estado de hold */
 
-uint16_t distancia = 0;
-uint8_t teclas;
+uint16_t distancia = 0; /* Variable para almacenar la distancia medida */
+uint8_t teclas; /* Variable para almacenar el estado de los switches */
 
 TaskHandle_t medir_distancia_handle = NULL;	/* Handle para la tarea de medir distancia */
 TaskHandle_t leer_teclas_handle = NULL;	/* Handle para la tarea de leer teclas */
 
 /*==================[internal functions declaration]=========================*/
 
-static void medir_distancia(void *pvParameter)
+
+static void medir_distancia(void *pvParameter) /*Tarea para medir la distancia*/
 {
 	while(true){
 	if(on_off)
@@ -111,7 +112,7 @@ static void medir_distancia(void *pvParameter)
 }
 
 
-static void leer_teclas(void *pvParameter)
+static void leer_teclas(void *pvParameter) /* Tarea para leer los switches */
 {
 	while(true)
 	{

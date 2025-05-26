@@ -2,7 +2,8 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * Cree un nuevo proyecto en el que modifique la actividad del punto 1 de manera de utilizar interrupciones
+ * para el control de las teclas y el control de tiempos (Timers).
  *
  * <a href="https://drive.google.com/...">Operation Example</a>
  *
@@ -54,15 +55,15 @@
 /*==================[macros and definitions]=================================*/
 
 #define Delay_time 1000	/* Tiempo de espera en milisegundos */
-#define CONFIG_BLINK_PERIOD_LED_1_US 1000000
+#define CONFIG_BLINK_PERIOD_LED_1_US 1000000 /* Periodo del timer del LED_1 en microsegundos */
 
 /*==================[internal data definition]===============================*/
 
 bool on_off = true;	/* Variable para el estado del LED */
 bool hold = false;	/* Variable para el estado de hold */
 
-uint16_t distancia = 0;
-uint8_t teclas;
+uint16_t distancia = 0; /* Variable para almacenar la distancia medida */
+uint8_t teclas; /* Variable para almacenar el estado de los switches */
 
 TaskHandle_t medir_distancia_handle = NULL;	/* Handle para la tarea de medir distancia */
 TaskHandle_t leer_teclas_handle = NULL;	/* Handle para la tarea de leer teclas */

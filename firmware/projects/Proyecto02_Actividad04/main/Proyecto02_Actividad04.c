@@ -2,7 +2,11 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * Diseñar e implementar una aplicación, basada en el driver analog io mcu.y el driver 
+ * de transmisión serie uart mcu.h, que digitalice una señal analógica y la transmita a
+ * un graficador de puerto serie de la PC. Se debe tomar la entrada CH1 del conversor AD
+ * y la transmisión se debe realizar por la UART conectada al puerto serie de la PC, en 
+ * un formato compatible con un graficador por puerto serie. 
  *
  * <a href="https://drive.google.com/...">Operation Example</a>
  *
@@ -17,7 +21,7 @@
  *
  * |   Date	    | Description                                    |
  * |:----------:|:-----------------------------------------------|
- * | 12/09/2023 | Document creation		                         |
+ * | 16/05/2025 | Document creation		                         |
  *
  * @author Lautaro Emeri Suhr (lautaro.emeri@ingenieria.uner.edu.ar)
  *
