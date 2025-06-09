@@ -2,19 +2,25 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * El programa debe sensar la temperatura, humedad y radiación de un ambiente. Ademas, debe
+ * alertar si las condiciones son favorables o no para el usuario.
  *
- * <a href="https://drive.google.com/...">Operation Example</a>
+ * https://docs.google.com/document/d/10MBqQa0cgaQJqT7N-jy8sp3lWORnO2gNoYU2Fr5Rgtc/edit?tab=t.0#heading=h.nalab2yuokmv
  *
  * @section hardConn Hardware Connection
- *
  *
  * |   	DHT11		|   ESP-EDU 	|
  * |:--------------:|:--------------|
  * | 	VCC     	|	3V3     	|
  * | 	DATA	 	| 	GPIO 20		|
  * | 	GND		 	| 	GND 		|
- *
+ * 
+ * | Sensor de radiación |   ESP-EDU 	|
+ * |:-------------------:|:-------------|
+ * | 	VCC     	     |	  VCC     	|
+ * | 	DATA	 	     | 	  CH0     	|
+ * | 	GND		 	     | 	  GND 		|
+ * 
  *
  * @section changelog Changelog
  *
@@ -35,7 +41,9 @@
 #include "analog_io_mcu.h"
 #include "gpio_mcu.h"
 #include "uart_mcu.h"
+#include "timer_mcu.h"
 #include "led.h"
+#include "switch.h"
 /*==================[macros and definitions]=================================*/
 #define LIMITE_HUMEDAD 85
 #define LIMITE_TEMPERATURA 2
@@ -47,8 +55,12 @@
 /*==================[internal data definition]===============================*/
 
 /*==================[internal functions declaration]=========================*/
-
-static void medir_Humedad_Temperatura_Radiacion(void *PvParameters)
+/**
+ * @brief Tarea para medir la humedad, temperatura y radiación.
+ * 
+ * @param pvParameter Punter a parámetros de la tarea (no se utiliza en este caso).
+ */
+static void medir_Humedad_Temperatura_Radiacion(void *pvParameter)
 {
 	float *humedad, *temperatura;
 	uint16_t radiacion = 0;
@@ -57,6 +69,7 @@ static void medir_Humedad_Temperatura_Radiacion(void *PvParameters)
 	bool control2 = false;
 	while(true)
 	{
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		if(dht11Read(&humedad,&temperatura))
 		{
 			if(humedad < LIMITE_HUMEDAD && temperatura > LIMITE_TEMPERATURA)
@@ -115,6 +128,26 @@ static void medir_Humedad_Temperatura_Radiacion(void *PvParameters)
 	}
 }
 
+/**
+ * @brief Tarea para controlar los switches.
+ * 
+ * @param control Estado del control (true: activo - false: inactivo).
+ */
+void control(bool control)
+{
+	if(control)
+	{
+		SwitchActivInt(SWITCH_1, medir_Humedad_Temperatura_Radiacion, NULL);
+		control = false;
+	}
+	else
+	{
+		SwitchActivInt(SWITCH_2, NULL, NULL);
+		control = true;
+	}
+}
+
+
 /*==================[external functions definition]==========================*/
 void app_main(void){
 	analog_input_config_t adc_config =
@@ -137,9 +170,12 @@ void app_main(void){
 
 	dht11Init(GPIO_DHT11);
 	LedsInit();
-
+	SwitchesInit();
 
 	xTaskCreate(medir_Humedad_Temperatura_Radiacion, "Medir Humedad y Temperatura", 2048, NULL, 5, NULL);
+	xTaskCreate(control, "Control Switch", 2048, NULL, 5, NULL);	
+
+	
 
 
 }
