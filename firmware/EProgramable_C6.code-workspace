@@ -41,6 +41,9 @@
         },
         {
             "path": "projects/Proyecto_Integrador"
+        },
+        {
+            "path": "projects/Examen"
         }
     ],
     "settings": {
