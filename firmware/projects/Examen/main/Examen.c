@@ -18,7 +18,7 @@
  * | Sensor de radiación |   ESP-EDU 	|
  * |:-------------------:|:-------------|
  * | 	VCC     	     |	  VCC     	|
- * | 	DATA	 	     | 	  CH0     	|
+ * | 	DATA	 	     | 	  CH1     	|
  * | 	GND		 	     | 	  GND 		|
  * 
  *
@@ -106,7 +106,8 @@ static void medir_Humedad_Temperatura_Radiacion(void *pvParameter)
 			LedOff(LED_VERDE);
 			LedOff(LED_ROJO);
 
-		}else
+		}
+		else
 		{
 			aux_radiacion = radiacion * (100 / 3.3);
 			UartSendString(UART_PC, "Radiacion ");
@@ -150,9 +151,10 @@ void control(bool control)
 
 /*==================[external functions definition]==========================*/
 void app_main(void){
+
 	analog_input_config_t adc_config =
 	{
-		.input = CH0,
+		.input = CH1,
 		.mode = ADC_SINGLE,
 		.func_p = NULL,
 		.param_p = NULL,
