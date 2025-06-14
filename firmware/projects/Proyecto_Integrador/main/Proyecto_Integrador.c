@@ -65,6 +65,11 @@ const gpio_t lista[] = {PIN_A, PIN_B, PIN_C, PIN_D};
 static float pasos_por_segundo = 1000; // valor inicial de seguridad
 static TaskHandle_t motor_task_handle = NULL;
 
+volatile uint8_t PORCENTAJE_INICIAL = 0;
+volatile uint8_t PESO_BEBE = 0;
+volatile uint8_t GIR = 0;
+volatile uint8_t PORCENTAJE_FINAL = 0;
+
 /*==================[internal functions declaration]=========================*/
 /**
  * @brief Función que se invoca en la interrupción del timer
@@ -90,43 +95,60 @@ static void moverMotor(void *pvParameter)
 	}
 }
 
-void read_data(uint8_t * data, uint8_t length){
+/**
+ * @brief Función a ejecutarse ante un interrupción de recepción
+ * a través de la conexión BLE.
+ *
+ * @param data      Puntero a array de datos recibidos
+ * @param length    Longitud del array de datos recibidos
+ */
+void read_data(uint8_t *data, uint8_t length)
+{
 	uint8_t i = 1;
-    static uint8_t red = 0, green = 0, blue = 0;
-	char msg[30];
-
-	if(data[0] == 'R'){
-        /* El slidebar Rojo envía los datos con el formato "R" + value + "A" */
-		red = 0;
-		while(data[i] != 'A'){
-            /* Convertir el valor ASCII a un valor entero */
-			red = red * 10;
-			red = red + (data[i] - '0');
-			i++;
-		}
-	}else if(data[0] == 'G'){   
-        /* El slidebar Verde envía los datos con el formato "G" + value + "A" */
-		green = 0;
-		while(data[i] != 'A'){
-            /* Convertir el valor ASCII a un valor entero */
-			green = green * 10;
-			green = green + (data[i] - '0');
-			i++;
-		}
-	}else if(data[0] == 'B'){
-        /* El slidebar Azul envía los datos con el formato "B" + value + "A" */
-		blue = 0;
-		while(data[i] != 'A'){
-            /* Convertir el valor ASCII a un valor entero */
-			blue = blue * 10;
-			blue = blue + (data[i] - '0');
+	if (data[0] == 'P')
+	{
+		PORCENTAJE_INICIAL = 0;
+		while (data[i] != 'I')
+		{
+			/* Convertir el valor ASCII a un valor entero */
+			PORCENTAJE_INICIAL = PORCENTAJE_INICIAL * 10;
+			PORCENTAJE_INICIAL = PORCENTAJE_INICIAL + (data[i] - '0');
 			i++;
 		}
 	}
-    NeoPixelAllColor(NeoPixelRgb2Color(red, green, blue));
-    /* Se envía una realimentación de los valores actuales de brillo del LED */
-    sprintf(msg, "R: %d, G: %d, B: %d\n", red, green, blue);
-    BleSendString(msg);
+	if (data[0] == 'P')
+	{
+		PESO_BEBE = 0;
+		while (data[i] != 'B')
+		{
+			/* Convertir el valor ASCII a un valor entero */
+			PESO_BEBE = PESO_BEBE * 10;
+			PESO_BEBE = PESO_BEBE + (data[i] - '0');
+			i++;
+		}
+	}
+	if (data[0] == 'G')
+	{
+		GIR = 0;
+		while (data[i] != 'I')
+		{
+			/* Convertir el valor ASCII a un valor entero */
+			GIR = GIR * 10;
+			GIR = GIR + (data[i] - '0');
+			i++;
+		}
+	}
+	if (data[0] == 'P')
+	{
+		PORCENTAJE_FINAL = 0;
+		while (data[i] != 'F')
+		{
+			/* Convertir el valor ASCII a un valor entero */
+			PORCENTAJE_FINAL = PORCENTAJE_FINAL * 10;
+			PORCENTAJE_FINAL = PORCENTAJE_FINAL + (data[i] - '0');
+			i++;
+		}
+	}
 }
 
 /**
@@ -200,14 +222,11 @@ void app_main(void)
 
 	static neopixel_color_t color;
 	ble_config_t ble_configuration = {
-		"ESP_EDU_1",
+		"ESP_EDU_LAUTARO",
 		read_data};
 
 	LedsInit();
 	BleInit(&ble_configuration);
-	/* Se inicializa el LED RGB de la placa */
-	NeoPixelInit(BUILT_IN_RGB_LED_PIN, BUILT_IN_RGB_LED_LENGTH, &color);
-	NeoPixelAllOff();
 	while (1)
 	{
 		vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
