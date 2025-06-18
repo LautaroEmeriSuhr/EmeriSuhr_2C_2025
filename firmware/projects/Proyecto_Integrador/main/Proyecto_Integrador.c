@@ -2,7 +2,8 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * La hipoglucemia se define como < 0.40 - 0.45 mg/ml en sangre
+ * El GIR normal es de 5-7 mg/kg/min
  *
  * <a href="https://drive.google.com/...">Operation Example</a>
  *
@@ -38,22 +39,24 @@
 #include "ble_mcu.h"
 
 /*==================[macros and definitions]=================================*/
-#define PASOS_POR_VUELTA 2048
-#define VOLUMEN_POR_VUELTA 0.2f								 // mL
-#define PASOS_POR_ML (PASOS_POR_VUELTA / VOLUMEN_POR_VUELTA) // 10240 pasos/mL
-#define SEGUNDOS_POR_HORA 3600
+
+#define PASOS_POR_VUELTA 2048								 // pasos // medir en el LAB
+#define VOLUMEN_POR_VUELTA 0.2								 // mL 	  // medir en el LAB
+#define PASOS_POR_ML (PASOS_POR_VUELTA / VOLUMEN_POR_VUELTA) // 20480 pasos/mL
 
 #define PIN_A GPIO_19
 #define PIN_B GPIO_20
 #define PIN_C GPIO_21
 #define PIN_D GPIO_22
 
-#define PIN_RELE GPIO_23
+#define PIN_VALVULA_GLUCOSA GPIO_15
+#define PIN_VALVULA_H20 GPIO_17
 
 #define CONFIG_BLINK_PERIOD 500
-#define LED_BT	LED_1
+#define LED_BT LED_1
 
 /*==================[internal data definition]===============================*/
+
 const int pasos[4][4] =
 	{
 		{1, 1, 0, 0},
@@ -62,36 +65,62 @@ const int pasos[4][4] =
 		{1, 0, 0, 1}};
 
 const gpio_t lista[] = {PIN_A, PIN_B, PIN_C, PIN_D};
-static float pasos_por_segundo = 1000; // valor inicial de seguridad
-static TaskHandle_t motor_task_handle = NULL;
+TaskHandle_t motor_task_handle = NULL;
+volatile uint32_t pasos_por_segundo = 0; // valor inicial de seguridad
+volatile bool control_motor = false;
+volatile uint32_t pasos_motor = 0;
 
-volatile uint8_t PORCENTAJE_INICIAL = 0;
-volatile uint8_t PESO_BEBE = 0;
-volatile uint8_t GIR = 0;
-volatile uint8_t PORCENTAJE_FINAL = 0;
+static uint8_t caudal_valvulas_ml_s = 2; // MEDIDO EN MI CASA
+volatile bool control_valvula = false;
+
+volatile uint8_t concentracion_inicial_glucosa = 0; // en mg/ml
+volatile uint16_t peso_bebe = 0;					// en kg
+volatile uint8_t gir = 0;							// en mg/kg/min
+volatile uint16_t volumen_final = 0;				// en ml
+volatile uint8_t concentracion_final_glucosa = 0;	// en mg/ml
+volatile int indice_pasos = 0;
+volatile uint32_t indice_motor = 0;
 
 /*==================[internal functions declaration]=========================*/
+
 /**
  * @brief Función que se invoca en la interrupción del timer
  */
+
 void motorTimerCallback(void *pvParameter)
 {
 	vTaskNotifyGiveFromISR(motor_task_handle, pdFALSE);
 }
+
 /**
  * @brief Tarea encargada de mover el motor paso a paso
  */
+
 static void moverMotor(void *pvParameter)
 {
 	int indice_pasos = 0;
+	uint32_t indice_motor = 0;
 	while (true)
 	{
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		for (int i = 0; i < 4; i++)
+		if (control_motor)
 		{
-			GPIOState(lista[i], pasos[indice_pasos][i]);
+			if (indice_motor < pasos_motor)
+			{
+				indice_motor++;
+				// Ejecutar un paso
+				for (int i = 0; i < 4; i++)
+				{
+					GPIOState(lista[i], pasos[indice_pasos][i]);
+				}
+				indice_pasos = (indice_pasos + 1) % 4;
+			}
+			else
+			{
+				indice_motor = 0;
+				control_motor = false;
+			}
 		}
-		indice_pasos = (indice_pasos + 1) % 4;
 	}
 }
 
@@ -107,118 +136,121 @@ void read_data(uint8_t *data, uint8_t length)
 	uint8_t i = 1;
 	if (data[0] == 'P')
 	{
-		PORCENTAJE_INICIAL = 0;
+		concentracion_inicial_glucosa = 0;
 		while (data[i] != 'I')
 		{
 			/* Convertir el valor ASCII a un valor entero */
-			PORCENTAJE_INICIAL = PORCENTAJE_INICIAL * 10;
-			PORCENTAJE_INICIAL = PORCENTAJE_INICIAL + (data[i] - '0');
+			concentracion_inicial_glucosa = concentracion_inicial_glucosa * 10;
+			concentracion_inicial_glucosa = concentracion_inicial_glucosa + (data[i] - '0');
 			i++;
 		}
 	}
-	if (data[0] == 'P')
+	if (data[0] == 'K')
 	{
-		PESO_BEBE = 0;
+		peso_bebe = 0;
 		while (data[i] != 'B')
 		{
 			/* Convertir el valor ASCII a un valor entero */
-			PESO_BEBE = PESO_BEBE * 10;
-			PESO_BEBE = PESO_BEBE + (data[i] - '0');
+			peso_bebe = peso_bebe * 10;
+			peso_bebe = peso_bebe + (data[i] - '0');
 			i++;
 		}
 	}
 	if (data[0] == 'G')
 	{
-		GIR = 0;
+		gir = 0;
 		while (data[i] != 'I')
 		{
 			/* Convertir el valor ASCII a un valor entero */
-			GIR = GIR * 10;
-			GIR = GIR + (data[i] - '0');
+			gir = gir * 10;
+			gir = gir + (data[i] - '0');
 			i++;
 		}
 	}
-	if (data[0] == 'P')
+	if (data[0] == 'V')
 	{
-		PORCENTAJE_FINAL = 0;
+		volumen_final = 0;
+		while (data[i] != 'T')
+		{
+			/* Convertir el valor ASCII a un valor entero */
+			volumen_final = volumen_final * 10;
+			volumen_final = volumen_final + (data[i] - '0');
+			i++;
+		}
+	}
+	if (data[0] == 'R')
+	{
+		concentracion_final_glucosa = 0;
 		while (data[i] != 'F')
 		{
 			/* Convertir el valor ASCII a un valor entero */
-			PORCENTAJE_FINAL = PORCENTAJE_FINAL * 10;
-			PORCENTAJE_FINAL = PORCENTAJE_FINAL + (data[i] - '0');
+			concentracion_final_glucosa = concentracion_final_glucosa * 10;
+			concentracion_final_glucosa = concentracion_final_glucosa + (data[i] - '0');
 			i++;
 		}
+	}
+
+	if (data[0] == 'D')
+	{
+		control_valvula = true;
 	}
 }
 
 /**
  * @brief Tarea encargada controlar la válvula
  */
-static void controlarValvula(void *pvParameter)
+static void prepararMezcla(void *pvParameter)
 {
+	uint8_t volumen_glucosa;
+	uint8_t volumen_H2O;
+
+	uint8_t tiempo_glucosa;
+	uint8_t tiempo_H2O;
 	while (true)
 	{
-		GPIOState(PIN_RELE, 0);			 // Activar válvula
-		vTaskDelay(pdMS_TO_TICKS(1000)); // Mantener abierta por 1 segundo
-		GPIOState(PIN_RELE, 1);			 // Desactivar válvula
-		vTaskDelay(pdMS_TO_TICKS(1000)); // Esperar 1 segundo antes de la siguiente activación
+		if (control_valvula)
+		{
+
+			volumen_glucosa = (concentracion_final_glucosa * volumen_final) / concentracion_inicial_glucosa;
+			volumen_H2O = volumen_final - volumen_glucosa;
+
+			tiempo_glucosa = volumen_glucosa / caudal_valvulas_ml_s;
+			tiempo_H2O = volumen_H2O / caudal_valvulas_ml_s;
+
+			control_valvula = false;
+
+			TimerStop(TIMER_A);
+
+			GPIOState(PIN_VALVULA_GLUCOSA, 1); // Activar
+			vTaskDelay(pdMS_TO_TICKS(tiempo_glucosa * 1000));
+			GPIOState(PIN_VALVULA_GLUCOSA, 0); // Desactivar
+
+			GPIOState(PIN_VALVULA_H20, 1); // Activar
+			vTaskDelay(pdMS_TO_TICKS(tiempo_H2O * 1000));
+			GPIOState(PIN_VALVULA_H20, 0); // Desactivar
+
+			pasos_motor = PASOS_POR_ML * volumen_final;
+			control_motor = true;
+
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(100)); // pequeña espera para no saturar
+		TimerStart(TIMER_A);
 	}
 }
 
 /*==================[external functions definition]==========================*/
 void app_main(void)
 {
-	/*
-	// Entradas del enfermero
-	float GIR, peso, concentracion;
-
-	printf("Ingrese GIR (mg/kg/min): ");
-	scanf("%f", &GIR);
-
-	printf("Ingrese peso del paciente (kg): ");
-	scanf("%f", &peso);
-
-	printf("Ingrese concentracion de glucosa (mg/mL): ");
-	scanf("%f", &concentracion);
-
-	// Cálculo del caudal
-	float caudal_ml_h = (GIR * peso * 60) / concentracion;
-	float pasos_totales_h = caudal_ml_h * PASOS_POR_ML;
-	pasos_por_segundo = pasos_totales_h / SEGUNDOS_POR_HORA;
-
-	float periodo_ms = 1.0 / pasos_por_segundo;
-
-	printf("\nCaudal: %.2f mL/h\n", caudal_ml_h);
-	printf("Pasos por segundo: %.2f\n", pasos_por_segundo);
-	printf("Periodo entre pasos: %.2f ms\n", periodo_ms);
-	*/
-
-	// float periodo_ms = 1000.0 / pasos_por_segundo; // Periodo en milisegundos
-	/*
 	// Configuración de pines
 	GPIOInit(PIN_A, GPIO_OUTPUT);
 	GPIOInit(PIN_B, GPIO_OUTPUT);
 	GPIOInit(PIN_C, GPIO_OUTPUT);
 	GPIOInit(PIN_D, GPIO_OUTPUT);
 
-	// Crear e iniciar timer
-	timer_config_t timerMotor =
-		{
-			.timer = TIMER_A,
-			.period = 10000, // Periodo en microsegundos (100 us)
-			.func_p = motorTimerCallback,
-			.param_p = NULL};
-
-	TimerInit(&timerMotor);
-	TimerStart(timerMotor.timer);
-	*/
-
-	/*
-		// Tarea del relé para probar en clase
-	GPIOInit(PIN_RELE, GPIO_OUTPUT);
-	// Crear tarea del relé
-	xTaskCreate(&controlarValvula, "Controlar Válvula", 2048, NULL, 5, NULL);
-	*/
+	// Tarea del relé para probar en clase
+	GPIOInit(PIN_VALVULA_GLUCOSA, GPIO_OUTPUT);
+	GPIOInit(PIN_VALVULA_H20, GPIO_OUTPUT);
 
 	static neopixel_color_t color;
 	ble_config_t ble_configuration = {
@@ -227,6 +259,31 @@ void app_main(void)
 
 	LedsInit();
 	BleInit(&ble_configuration);
+
+	// Crear tarea del control de las valvulas
+	xTaskCreate(&prepararMezcla, "Preparar Mezcla", 4096, NULL, 5, NULL);
+
+	xTaskCreate(&moverMotor, "Mover Motor", 2048, NULL, 5, &motor_task_handle);
+
+	uint32_t caudal_ml_s = (gir * peso_bebe) / (concentracion_final_glucosa * 60);
+
+	// Calcular frecuencia de pasos (pasos por segundo)
+	pasos_por_segundo = caudal_ml_s * PASOS_POR_ML;
+
+	printf(pasos_por_segundo);
+
+
+	// Crear e iniciar timer
+	timer_config_t timerMotor =
+		{
+			.timer = TIMER_A,
+			.period = 10000,
+			.func_p = motorTimerCallback,
+			.param_p = NULL};
+
+	TimerInit(&timerMotor);
+	TimerStart(timerMotor.timer);
+
 	while (1)
 	{
 		vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
