@@ -47,8 +47,8 @@
 #include "uart_mcu.h"
 #include "switch.h"
 /*==================[macros and definitions]=================================*/
-#define LIMITE_MAX_AGUA 22 	   // en cm
-#define LIMITE_MIN_AGUA 28 	   // en cm
+#define LIMITE_MAX_AGUA 22 	   // (30 - 7.96) si esta distancia disminuye yo quiero que se apague
+#define LIMITE_MIN_AGUA 28 	   // (30 - 1.59) si esta distancia aumenta yo quiero que se prenda
 #define LIMITE_MAX_COMIDA 665  // en mV
 #define LIMITE_MIN_COMIDA 2150 // en mV
 volatile uint16_t comida = 0;
@@ -76,11 +76,11 @@ static void TareaAgua(void *pvParameters)
 		{
 			uint16_t distancia = HcSr04ReadDistanceInCentimeters;
 			agua = (3.14) * (10) * (10) * (30 - distancia);
-			if (distancia > LIMITE_MIN_AGUA && distancia < LIMITE_MAX_AGUA)
+			if (distancia > LIMITE_MIN_AGUA)   // distancia mayor implica volumen menor
 			{
 				GPIOState(PIN_VALVULA_AGUA, true);
 			}
-			else
+			if(distancia < LIMITE_MAX_AGUA)  // distancia menor implica volumen mayor
 			{
 				GPIOState(PIN_VALVULA_AGUA, false);
 			}
@@ -136,6 +136,7 @@ static void TareaInformar(void *pvParameters)
 		UartSendString(UART_PC, " g de alimento y ");
 		UartSendString(UART_PC, (char *)UartItoa(agua, 10));
 		UartSendString(UART_PC, " ml de agua.");
+		
 		vTaskDelay(10000); // Delay 10 segundos
 	}
 }
