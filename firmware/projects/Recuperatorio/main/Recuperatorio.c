@@ -56,8 +56,8 @@ volatile uint16_t agua = 0;
 volatile bool on_off_agua = true;
 volatile bool on_off_comida = true;
 /*==================[internal data definition]===============================*/
-#define PIN_VALVULA_AGUA GPIO_10
-#define PIN_VALVULA_COMIDA GPIO_23
+#define PIN_VALVULA_AGUA GPIO_21
+#define PIN_VALVULA_COMIDA GPIO_22
 /*==================[internal functions declaration]=========================*/
 
 /**
