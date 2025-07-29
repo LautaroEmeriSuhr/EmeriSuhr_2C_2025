@@ -51,7 +51,6 @@
  * | 	Gnd 	    | 	GND     	|
  * 
  *
- *
  * @section changelog Changelog
  *
  * |   Date	    | Description                                    |
@@ -80,8 +79,9 @@
 #define SENSIBILIDAD_PRESION 730 // Sensibilidad del sensor de presion (mV/Bar)
 #define LIMITE_PRESION 500		 // Presion minima en mBar
 #define CAUDAL_DUCHA 750		 // Caudal de la manguera en mL/min
-#define PIN_BOMBA_1 GPIO_21	 	// Pin de la bomba de agua limpia
-#define PIN_BOMBA_2 GPIO_22	 	// Pin de la bomba de agua sucia
+
+#define PIN_BOMBA_1 GPIO_16	 	// Pin de la bomba de agua limpia
+#define PIN_BOMBA_2 GPIO_17	 	// Pin de la bomba de agua sucia
 
 /*==================[internal data definition]===============================*/
 volatile uint16_t aguaLimpia = 0;
@@ -211,7 +211,41 @@ static void on_off(void *pvParameters)
 /*==================[external functions definition]==========================*/
 void app_main(void)
 {
+	//Inicializaciones
+	serial_config_t uart_config =
+	{
+		.port = UART_PC,
+		.baud_rate =  115200, 
+		.func_p = NULL,
+		.param_p = NULL 
+	};
+	UartInit(&uart_config);
 
+	analog_input_config_t adc_config = 
+	{ 
+		.input = CH0, 
+		.mode = ADC_SINGLE,
+		.func_p = NULL,
+		.param_p= NULL, 
+		.sample_frec = 0
+	};
+    AnalogInputInit(&adc_config);
+
+	LedsInit();
+	SwitchesInit();
+	LcdItsE0803Init();
+	HcSr04Init(GPIO_2, GPIO_3); // Sensor de distancia 1
+	HcSr04Init(GPIO_12, GPIO_13); // Sensor de distancia 2
+
+	// Tareas
+	xTaskCreate(tareaAguaLimpia, "Tarea Agua Limpia", 2048, NULL, 5, NULL);
+	xTaskCreate(tareaAguaSucia, "Tarea Agua Sucia", 2048, NULL, 5, NULL);
+	xTaskCreate(TareaInformarVolumenes, "Tarea Informar Volumenes", 2048, NULL, 5, NULL);
+	xTaskCreate(tareaPresion, "Tarea Presion", 2048, NULL, 5, NULL);
+	xTaskCreate(tareaAspiracion, "Tarea Aspiracion", 2048, NULL, 5, NULL);
+	xTaskCreate(tareaMostrarDatos, "Tarea Mostrar Datos", 2048, NULL, 5, NULL);
+
+	// Switches
 	SwitchActivInt(SWITCH_1, on_off, NULL);
 }
 /*==================[end of file]============================================*/
