@@ -281,7 +281,9 @@ void app_main(void)
 	LedsInit();
 	SwitchesInit();
 	LcdItsE0803Init();
-
+	GPIOInit(PIN_BOMBA_1, GPIO_OUTPUT);
+	GPIOInit(PIN_BOMBA_2, GPIO_OUTPUT);
+	
 	// Tareas
 	xTaskCreate(tareaAgua, "Tarea Agua", 2048, NULL, 5, NULL);
 	xTaskCreate(TareaInformarVolumenes, "Tarea Informar Volumenes", 2048, NULL, 5, NULL);
