@@ -90,31 +90,22 @@ volatile bool controlAguaLimpia = false;
 volatile bool controlAguaSucia = false;
 volatile bool on_off_aspiracion = false; // El sistema comienza apagado
 /*==================[internal functions declaration]=========================*/
-static void tareaAguaLimpia(void *pvParameters)
-{
-	while (true)
-	{
-		uint16_t distancia = HcSr04ReadDistanceInCentimeters;
-		aguaLimpia = (30) * (30) * (30 - distancia); // en cm3
-		aguaLimpia = aguaLimpia / 1000;				 // Convierto a Litros
-		if (aguaLimpia > LIMITE_AGUA_LIMPIA)
-		{
-			controlAguaLimpia = true;
-		}
-		else
-		{
-			controlAguaLimpia = false;
-		}
-		vTaskDelay(500);
-	}
-}
 
-static void tareaAguaSucia(void *pvParameters)
+/**
+ * @brief Tarea que controla el agua limpia y sucia.
+ * 
+ * Esta tarea lee los sensores de distancia para calcular los volúmenes de agua limpia y sucia,
+ * y actualiza los estados de control correspondientes.
+ * 
+ * @param pvParameters Parámetro de la tarea (no utilizado).
+ */
+static void tareaAgua(void *pvParameters)
 {
 	while (true)
 	{
-		uint16_t distancia = HcSr04ReadDistanceInCentimeters;
-		aguaSucia = (30) * (30) * (30 - distancia); // en cm3
+		HcSr04Init(GPIO_2, GPIO_3); // Sensor de distancia 1	
+		uint16_t distancia_1 = HcSr04ReadDistanceInCentimeters();
+		aguaSucia = (30) * (30) * (30 - distancia_1); // en cm3
 		aguaSucia = aguaSucia / 1000;				// Convierto a Litros
 		if (aguaSucia < LIMITE_AGUA_SUCIA)
 		{
@@ -124,10 +115,33 @@ static void tareaAguaSucia(void *pvParameters)
 		{
 			controlAguaSucia = false;
 		}
+		HcSr04Deinit();
+
+		HcSr04Init(GPIO_12, GPIO_13); // Sensor de distancia 2
+		uint16_t distancia_2 = HcSr04ReadDistanceInCentimeters();
+		aguaLimpia = (30) * (30) * (30 - distancia_2); // en cm3
+		aguaLimpia = aguaLimpia / 1000;				 // Convierto a Litros
+		if (aguaLimpia > LIMITE_AGUA_LIMPIA)
+		{
+			controlAguaLimpia = true;
+		}
+		else
+		{
+			controlAguaLimpia = false;
+		}
+		HcSr04Deinit();
+
 		vTaskDelay(500);
 	}
 }
 
+/**
+ * @brief Tarea que informa periódicamente los volúmenes de agua limpia y sucia.
+ * 
+ * Envía por UART la cantidad de agua limpia y sucia.
+ * 
+ * @param pvParameters Parámetro de la tarea (no utilizado).
+ */
 static void TareaInformarVolumenes(void *pvParameters)
 {
 	while (true)
@@ -142,6 +156,15 @@ static void TareaInformarVolumenes(void *pvParameters)
 		vTaskDelay(500);
 	}
 }
+
+/**
+ * @brief Tarea que controla la presión del agua.
+ * 
+ * Lee el valor del sensor de presión y activa la bomba si la presión es baja.
+ * 
+ * @param pvParameters Parámetro de la tarea (no utilizado).
+ */
+
 static void tareaPresion(void *pvParameters)
 {
 	while (true)
@@ -161,6 +184,13 @@ static void tareaPresion(void *pvParameters)
 	}
 }
 
+/**
+ * @brief Tarea que controla la aspiración de agua sucia.
+ * 
+ * Activa o desactiva la bomba de aspiración según el estado del sistema.
+ * 
+ * @param pvParameters Parámetro de la tarea (no utilizado).
+ */
 static void tareaAspiracion(void *pvParameters)
 {
 	while (true)
@@ -176,6 +206,14 @@ static void tareaAspiracion(void *pvParameters)
 		vTaskDelay(500);
 	}
 }
+
+/**
+ * @brief Tarea que muestra los datos en el LCD.
+ * 
+ * Muestra el tiempo restante de agua limpia y el estado de las luces LED.
+ * 
+ * @param pvParameters Parámetro de la tarea (no utilizado).
+ */
 static void tareaMostrarDatos(void *pvParameters)
 {
 	while (true)
@@ -204,11 +242,20 @@ static void tareaMostrarDatos(void *pvParameters)
 	}
 }
 
+/**
+ * @brief Alterna el estado de encendido/apagado de la aspiración.
+ * 
+ * Esta función se utiliza como callback para el switch que controla la aspiración.
+ * 
+ * @param pvParameters Parámetro de la tarea (no utilizado).
+ */
 static void on_off(void *pvParameters)
 {
 	on_off_aspiracion = !on_off_aspiracion;
 }
+
 /*==================[external functions definition]==========================*/
+
 void app_main(void)
 {
 	//Inicializaciones
@@ -234,12 +281,9 @@ void app_main(void)
 	LedsInit();
 	SwitchesInit();
 	LcdItsE0803Init();
-	HcSr04Init(GPIO_2, GPIO_3); // Sensor de distancia 1
-	HcSr04Init(GPIO_12, GPIO_13); // Sensor de distancia 2
 
 	// Tareas
-	xTaskCreate(tareaAguaLimpia, "Tarea Agua Limpia", 2048, NULL, 5, NULL);
-	xTaskCreate(tareaAguaSucia, "Tarea Agua Sucia", 2048, NULL, 5, NULL);
+	xTaskCreate(tareaAgua, "Tarea Agua", 2048, NULL, 5, NULL);
 	xTaskCreate(TareaInformarVolumenes, "Tarea Informar Volumenes", 2048, NULL, 5, NULL);
 	xTaskCreate(tareaPresion, "Tarea Presion", 2048, NULL, 5, NULL);
 	xTaskCreate(tareaAspiracion, "Tarea Aspiracion", 2048, NULL, 5, NULL);
