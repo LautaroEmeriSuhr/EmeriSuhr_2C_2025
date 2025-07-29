@@ -79,7 +79,7 @@
 #define SENSIBILIDAD_PRESION 730 // Sensibilidad del sensor de presion (mV/Bar)
 #define LIMITE_PRESION 500		 // Presion minima en mBar
 #define CAUDAL_DUCHA 750		 // Caudal de la manguera en mL/min
-
+#define UMBRAL_PRESION 500  	// Umbral de presion en mBar
 #define PIN_BOMBA_1 GPIO_16	 	// Pin de la bomba de agua limpia
 #define PIN_BOMBA_2 GPIO_17	 	// Pin de la bomba de agua sucia
 
@@ -172,7 +172,7 @@ static void tareaPresion(void *pvParameters)
 		uint16_t presion_mV = 0;
 		AnalogInputReadSingle(CH0, &presion_mV);
 		uint16_t presion = (presion_mV / SENSIBILIDAD_PRESION) / 1000; // Convierto Bar a mBar dvidiendo por 1000
-		if (presion < 500 && controlAguaLimpia)
+		if (presion < UMBRAL_PRESION && controlAguaLimpia)
 		{
 			GPIOState(PIN_BOMBA_1, true);
 		}
